@@ -2,6 +2,8 @@
 import os
 import random
 import smtplib
+import redis
+import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -34,6 +36,19 @@ app = Flask(__name__)
 # Gmail configuration
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
+# Redis connection
+redis_client = None
+
+try:
+    REDIS_URL = os.getenv("REDIS_URL")
+    if not REDIS_URL:
+        raise ValueError("REDIS_URL not found in environment variables")
+    redis_client = redis.from_url(REDIS_URL)
+    redis_client.ping()  # Test connection
+except Exception as e:
+    print(f"Redis connection error: {e}")
+    redis_client = None
 
 # Global error handler
 @app.errorhandler(Exception)
@@ -244,15 +259,20 @@ def generate_pdf(invoice_data, logo_path=None, paid=False):
     return filename
 
 
-def send_email(recipients, company_name, invoice_number, attachment_path):
+def send_email(recipients, company_name, invoice_number, attachment_path, is_paid=False):
     msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
-    # Format recipients properly and remove any whitespace
     cleaned_recipients = [r.strip() for r in recipients]
     msg["To"] = ", ".join(cleaned_recipients)
-    subject = f"{company_name} sent you an invoice due {(datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')}"
+    
+    if is_paid:
+        subject = f"Payment Received - Invoice {invoice_number} from {company_name}"
+        body = f"Thank you for your payment. Please find attached your paid invoice {invoice_number}."
+    else:
+        subject = f"{company_name} sent you an invoice due {(datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')}"
+        body = f"Please find attached invoice {invoice_number} from {company_name}."
+    
     msg["Subject"] = subject
-    body = f"Please find attached invoice {invoice_number} from {company_name}."
     msg.attach(MIMEText(body, "plain"))
 
     with open(attachment_path, "rb") as attachment:
@@ -269,6 +289,43 @@ def send_email(recipients, company_name, invoice_number, attachment_path):
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
+
+
+def store_invoice(invoice_data):
+    if redis_client:
+        try:
+            invoice_number = invoice_data['invoice_number']
+            redis_client.set(f"invoice:{invoice_number}", json.dumps(invoice_data))
+            return True
+        except Exception as e:
+            print(f"Error storing invoice: {e}")
+    return False
+
+
+def get_invoice(invoice_number):
+    if redis_client:
+        try:
+            invoice_data = redis_client.get(f"invoice:{invoice_number}")
+            return json.loads(invoice_data) if invoice_data else None
+        except Exception as e:
+            print(f"Error retrieving invoice: {e}")
+    return None
+
+
+@app.route("/lookup_invoice", methods=["POST"])
+def lookup_invoice():
+    try:
+        invoice_number = request.form.get("invoice_number")
+        if not invoice_number:
+            return jsonify({"status": "error", "message": "Invoice number required"})
+            
+        invoice_data = get_invoice(invoice_number)
+        if invoice_data:
+            return jsonify({"status": "success", "data": invoice_data})
+        return jsonify({"status": "error", "message": "Invoice not found"})
+    except Exception as e:
+        print(f"Lookup error: {e}")
+        return jsonify({"status": "error", "message": str(e)})
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -311,6 +368,9 @@ def index():
                 "total": total,
             }
 
+            # Store invoice in Redis
+            store_invoice(invoice_data)
+
             # Handle logo upload
             logo_path = None
             if "logo" in request.files:
@@ -319,16 +379,14 @@ def index():
                     logo_path = os.path.join("uploads", logo.filename)
                     logo.save(logo_path)
 
-            if "send_paid" in request.form:
-                pdf_filename = generate_pdf(invoice_data, logo_path, paid=True)
-            else:
-                pdf_filename = generate_pdf(invoice_data, logo_path, paid=False)
+            is_paid = "send_paid" in request.form
+            pdf_filename = generate_pdf(invoice_data, logo_path, paid=is_paid)
 
             recipients = request.form["recipients"].split(",")
             
             try:
                 email_sent = send_email(
-                    recipients, company_name, invoice_number, pdf_filename
+                    recipients, company_name, invoice_number, pdf_filename, is_paid=is_paid
                 )
                 if email_sent:
                     return jsonify({"status": "success"})
@@ -378,6 +436,9 @@ def index():
                 "items": items,
                 "total": total,
             }
+
+            # Store invoice in Redis
+            store_invoice(invoice_data)
 
             # Handle logo upload
             logo_path = None

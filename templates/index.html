@@ -132,6 +132,56 @@
           margin-bottom: 10px;
         }
       }
+
+      .invoice-input {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .invoice-input span {
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      #lookupResult {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 4px;
+      }
+
+      #lookupResult.found {
+        background-color: #e8f5e9;
+        border: 1px solid #81c784;
+      }
+
+      #lookupResult.not-found {
+        background-color: #ffebee;
+        border: 1px solid #e57373;
+      }
+
+      .match-results {
+        max-height: 200px;
+        overflow-y: auto;
+        margin: 10px 0;
+      }
+
+      .invoice-match {
+        padding: 8px;
+        margin: 4px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .invoice-match:hover {
+        background-color: #f5f5f5;
+      }
+
+      .invoice-match.selected {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+      }
     </style>
   </head>
   <body>
@@ -246,6 +296,26 @@
       </button>
     </div>
 
+    <!-- Lookup Popup -->
+    <div id="lookupPopup" class="popup">
+      <h3>Look up Invoice</h3>
+      <div class="form-group">
+        <label>Invoice Number (last 4 or partial):</label>
+        <div class="invoice-input">
+          <input type="text" id="lookupNumber" maxlength="10" class="rs-input" 
+                 placeholder="Enter full or partial number">
+        </div>
+      </div>
+      <div id="matchResults" class="match-results"></div>
+      <div id="lookupResult"></div>
+      <div class="button-group">
+        <button type="button" class="rs-btn rs-btn-primary" onclick="sendPaidInvoice()" id="sendPaidBtn" disabled>
+          Send Paid Invoice
+        </button>
+        <button type="button" class="rs-btn rs-btn-default" onclick="closeLookupPopup()">Cancel</button>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/rsuite@5/dist/rsuite.min.js"></script>
     <script>
       let itemCount = 1;
@@ -276,10 +346,10 @@
       });
 
       document.getElementById("sendPaidBtn").addEventListener("click", function () {
-        sendInvoice('send_paid');
+        document.getElementById("lookupPopup").style.display = "block";
       });
 
-      function sendInvoice(action) {
+      function sendInvoice(action, formData = null) {
         const form = document.getElementById("invoiceForm");
         const loading = document.getElementById("loading");
         const popupMessage = document.getElementById("popupMessage");
@@ -287,8 +357,10 @@
 
         loading.style.display = "flex"; // Changed to flex for center alignment
 
-        const formData = new FormData(form);
-        formData.append(action, "true");
+        if (!formData) {
+          formData = new FormData(form);
+          formData.append(action, "true");
+        }
 
         fetch("/", {
           method: "POST",
@@ -310,6 +382,15 @@
         .then(data => {
           loading.style.display = "none";
           if (data.status === "success") {
+            // Store invoice data in Redis
+            fetch("/store_invoice", {
+              method: "POST",
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: JSON.stringify(formData)
+            });
             popupText.innerText = "Email sent successfully!";
           } else {
             popupText.innerText = "Email sending failed: " + data.message;
@@ -324,10 +405,72 @@
         });
       }
 
+      document.getElementById("lookupNumber").addEventListener("input", function(e) {
+        const number = e.target.value;
+        if (number.length >= 4) {
+          searchInvoices(number);
+        }
+      });
+
+      function searchInvoices(number) {
+        const formData = new FormData();
+        formData.append("partial_number", number);
+
+        fetch("/search_invoices", {
+          method: "POST",
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "success") {
+            displayMatches(data.matches);
+          }
+        });
+      }
+
+      function displayMatches(matches) {
+        const matchResults = document.getElementById("matchResults");
+        matchResults.innerHTML = matches.map(invoice => `
+          <div class="invoice-match" onclick="selectInvoice(${JSON.stringify(invoice)})">
+              Invoice #${invoice.invoice_number}<br>
+              ${invoice.company_name} - $${invoice.total}
+          </div>
+        `).join('');
+      }
+
+      function selectInvoice(invoice) {
+        selectedInvoice = invoice;
+        document.querySelectorAll('.invoice-match').forEach(el => 
+            el.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+        document.getElementById('sendPaidBtn').disabled = false;
+      }
+
+      function sendPaidInvoice() {
+        if (!selectedInvoice) return;
+
+        const formData = new FormData();
+        Object.entries(selectedInvoice).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+        formData.append("send_paid", "true");
+        formData.append("recipients", document.querySelector('input[name="recipients"]').value);
+
+        sendInvoice('send_paid', formData);
+        closeLookupPopup();
+      }
+
       function closePopup() {
         document.getElementById("popupMessage").style.display = "none";
         // Optionally, you can refresh the form here:
         // document.getElementById("invoiceForm").reset();
+      }
+
+      function closeLookupPopup() {
+        document.getElementById("lookupPopup").style.display = "none";
+        document.getElementById("lookupNumber").value = "";
+        document.getElementById("matchResults").innerHTML = "";
+        document.getElementById("lookupResult").innerHTML = "";
       }
     </script>
   </body>
