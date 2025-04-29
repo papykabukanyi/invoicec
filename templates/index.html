@@ -136,12 +136,23 @@
       .invoice-input {
         display: flex;
         align-items: center;
-        gap: 5px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0 8px;
       }
 
       .invoice-input span {
         font-size: 18px;
         font-weight: bold;
+        color: #333;
+      }
+
+      .invoice-input input {
+        border: none;
+        outline: none;
+        padding: 8px;
+        flex: 1;
       }
 
       #lookupResult {
@@ -167,20 +178,29 @@
       }
 
       .invoice-match {
-        padding: 8px;
-        margin: 4px 0;
+        padding: 12px;
+        margin: 8px 0;
         border: 1px solid #ddd;
         border-radius: 4px;
         cursor: pointer;
+        transition: all 0.2s;
       }
 
       .invoice-match:hover {
         background-color: #f5f5f5;
+        border-color: #2196f3;
       }
 
       .invoice-match.selected {
         background-color: #e3f2fd;
         border-color: #2196f3;
+      }
+
+      .no-matches {
+        padding: 10px;
+        color: #666;
+        text-align: center;
+        font-style: italic;
       }
     </style>
   </head>
@@ -300,14 +320,20 @@
     <div id="lookupPopup" class="popup">
       <h3>Look up Invoice</h3>
       <div class="form-group">
-        <label>Invoice Number (last 4 or partial):</label>
+        <label>Invoice Number:</label>
         <div class="invoice-input">
-          <input type="text" id="lookupNumber" maxlength="10" class="rs-input" 
-                 placeholder="Enter full or partial number">
+          <span>K</span>
+          <input 
+            type="text" 
+            id="lookupNumber" 
+            maxlength="10" 
+            class="rs-input" 
+            placeholder="Enter number"
+            pattern="\d*"
+          >
         </div>
       </div>
       <div id="matchResults" class="match-results"></div>
-      <div id="lookupResult"></div>
       <div class="button-group">
         <button type="button" class="rs-btn rs-btn-primary" onclick="sendPaidInvoice()" id="sendPaidBtn" disabled>
           Send Paid Invoice
@@ -319,6 +345,8 @@
     <script src="https://cdn.jsdelivr.net/npm/rsuite@5/dist/rsuite.min.js"></script>
     <script>
       let itemCount = 1;
+      let selectedInvoice = null;
+
       document.getElementById("add-item").addEventListener("click", function () {
         const itemsContainer = document.getElementById("items-container");
         const newItemDiv = document.createElement("div");
@@ -347,6 +375,16 @@
 
       document.getElementById("sendPaidBtn").addEventListener("click", function () {
         document.getElementById("lookupPopup").style.display = "block";
+      });
+
+      document.getElementById("lookupNumber").addEventListener("input", function(e) {
+        const number = e.target.value;
+        // Allow only numbers
+        if (!/^\d*$/.test(number)) {
+            e.target.value = number.replace(/\D/g, '');
+            return;
+        }
+        searchInvoices(number);
       });
 
       function sendInvoice(action, formData = null) {
@@ -405,19 +443,15 @@
         });
       }
 
-      document.getElementById("lookupNumber").addEventListener("input", function(e) {
-        const number = e.target.value;
-        if (number.length >= 4) {
-          searchInvoices(number);
-        }
-      });
-
       function searchInvoices(number) {
         const formData = new FormData();
         formData.append("partial_number", number);
 
         fetch("/search_invoices", {
           method: "POST",
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
           body: formData
         })
         .then(response => response.json())
@@ -425,15 +459,22 @@
           if (data.status === "success") {
             displayMatches(data.matches);
           }
-        });
+        })
+        .catch(error => console.error('Search error:', error));
       }
 
       function displayMatches(matches) {
         const matchResults = document.getElementById("matchResults");
+        if (matches.length === 0) {
+          matchResults.innerHTML = '<div class="no-matches">No matching invoices found</div>';
+          return;
+        }
+        
         matchResults.innerHTML = matches.map(invoice => `
           <div class="invoice-match" onclick="selectInvoice(${JSON.stringify(invoice)})">
-              Invoice #${invoice.invoice_number}<br>
-              ${invoice.company_name} - $${invoice.total}
+              <strong>Invoice ${invoice.invoice_number}</strong><br>
+              ${invoice.company_name}<br>
+              <strong>$${invoice.total}</strong>
           </div>
         `).join('');
       }

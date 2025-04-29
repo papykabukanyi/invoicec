@@ -28,6 +28,7 @@ from reportlab.lib.enums import TA_RIGHT, TA_CENTER
 from reportlab.pdfgen import canvas
 from dotenv import load_dotenv
 import traceback  # Import traceback
+from io import BytesIO  # Import BytesIO
 
 load_dotenv()
 
@@ -99,7 +100,8 @@ class OnePage(BaseDocTemplate):
 
 
 def generate_pdf(invoice_data, logo_path=None, paid=False):
-    filename = f"invoice_{invoice_data['invoice_number']}.pdf"
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
     
     class PaidCanvas(NumberedCanvas):
         def __init__(self, *args, **kwargs):
@@ -125,7 +127,6 @@ def generate_pdf(invoice_data, logo_path=None, paid=False):
             
             super().showPage()
 
-    doc = OnePage(filename, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
     styles = getSampleStyleSheet()
     
     # Custom styles
@@ -256,10 +257,11 @@ def generate_pdf(invoice_data, logo_path=None, paid=False):
         story.append(Paragraph(terms_text, styles["Normal"]))
 
     doc.build(story, canvasmaker=PaidCanvas)
-    return filename
+    buffer.seek(0)
+    return buffer
 
 
-def send_email(recipients, company_name, invoice_number, attachment_path, is_paid=False):
+def send_email(recipients, company_name, invoice_number, pdf_buffer, is_paid=False):
     msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
     cleaned_recipients = [r.strip() for r in recipients]
@@ -275,10 +277,11 @@ def send_email(recipients, company_name, invoice_number, attachment_path, is_pai
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
-    with open(attachment_path, "rb") as attachment:
-        part = MIMEApplication(attachment.read(), _subtype="pdf")
-        part.add_header("Content-Disposition", "attachment", filename=os.path.basename(attachment_path))
-        msg.attach(part)
+    # Attach PDF from buffer
+    part = MIMEApplication(pdf_buffer.read(), _subtype="pdf")
+    part.add_header("Content-Disposition", "attachment", filename=f"invoice_{invoice_number}.pdf")
+    msg.attach(part)
+    pdf_buffer.seek(0)  # Reset buffer position
 
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
@@ -328,10 +331,34 @@ def lookup_invoice():
         return jsonify({"status": "error", "message": str(e)})
 
 
+@app.route("/search_invoices", methods=["POST"])
+def search_invoices():
+    try:
+        partial_number = request.form.get("partial_number", "")
+        if not partial_number:
+            return jsonify({"status": "error", "message": "Number required"})
+        
+        # Search for matches in Redis
+        matches = []
+        pattern = f"invoice:K*{partial_number}*"
+        
+        if redis_client:
+            for key in redis_client.scan_iter(pattern):
+                invoice_data = redis_client.get(key)
+                if invoice_data:
+                    matches.append(json.loads(invoice_data))
+        
+        return jsonify({
+            "status": "success",
+            "matches": matches
+        })
+    except Exception as e:
+        print(f"Search error: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
-    global invoice_data
-    # Check if this is an AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         try:
             company_name = request.form["company_name"]
@@ -380,13 +407,11 @@ def index():
                     logo.save(logo_path)
 
             is_paid = "send_paid" in request.form
-            pdf_filename = generate_pdf(invoice_data, logo_path, paid=is_paid)
-
-            recipients = request.form["recipients"].split(",")
+            pdf_buffer = generate_pdf(invoice_data, logo_path, paid=is_paid)
             
             try:
                 email_sent = send_email(
-                    recipients, company_name, invoice_number, pdf_filename, is_paid=is_paid
+                    recipients, company_name, invoice_number, pdf_buffer, is_paid=is_paid
                 )
                 if email_sent:
                     return jsonify({"status": "success"})
@@ -401,7 +426,7 @@ def index():
             return jsonify({"status": "error", "message": f"General error: {str(e)}"}), 500
 
     elif request.method == "POST":
-        # Handle regular form submission (download)
+        # Handle download
         try:
             company_name = request.form["company_name"]
             buyer_name = request.form["buyer_name"]
@@ -448,15 +473,17 @@ def index():
                     logo_path = os.path.join("uploads", logo.filename)
                     logo.save(logo_path)
 
-            pdf_filename = generate_pdf(invoice_data, logo_path)
-
-            return send_file(pdf_filename, as_attachment=True, download_name=pdf_filename)
-
+            pdf_buffer = generate_pdf(invoice_data, logo_path)
+            return send_file(
+                pdf_buffer,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=f"invoice_{invoice_number}.pdf"
+            )
         except Exception as e:
             traceback.print_exc()
             return jsonify({"status": "error", "message": f"General error: {str(e)}"}), 500
 
-    # GET request - render template
     return render_template("index.html")
 
 
