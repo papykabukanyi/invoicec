@@ -47,10 +47,8 @@ try:
         raise ValueError("REDIS_URL not found in environment variables")
     redis_client = redis.from_url(REDIS_URL)
     redis_client.ping()  # Test connection
-    print("Successfully connected to Redis")
 except Exception as e:
     print(f"Redis connection error: {e}")
-    # Don't fail the app if Redis is not available, just log the error
     redis_client = None
 
 # Global error handler
@@ -416,15 +414,9 @@ def index():
             if "logo" in request.files:
                 logo = request.files["logo"]
                 if logo.filename != "":
-                    try:
-                        # Ensure uploads directory exists
-                        os.makedirs("uploads", exist_ok=True)
-                        logo_path = os.path.join("uploads", logo.filename)
-                        logo.save(logo_path)
-                        print(f"Logo saved to {logo_path}")
-                    except Exception as e:
-                        print(f"Error saving logo: {e}")
-                        # Continue without the logo if there's an error
+                    os.makedirs("uploads", exist_ok=True)  # Ensure uploads directory exists
+                    logo_path = os.path.join("uploads", logo.filename)
+                    logo.save(logo_path)
 
             is_paid = "send_paid" in request.form
             pdf_buffer = generate_pdf(invoice_data, logo_path, paid=is_paid)
@@ -490,15 +482,9 @@ def index():
             if "logo" in request.files:
                 logo = request.files["logo"]
                 if logo.filename != "":
-                    try:
-                        # Ensure uploads directory exists
-                        os.makedirs("uploads", exist_ok=True)
-                        logo_path = os.path.join("uploads", logo.filename)
-                        logo.save(logo_path)
-                        print(f"Logo saved to {logo_path}")
-                    except Exception as e:
-                        print(f"Error saving logo: {e}")
-                        # Continue without the logo if there's an error
+                    os.makedirs("uploads", exist_ok=True)  # Ensure uploads directory exists
+                    logo_path = os.path.join("uploads", logo.filename)
+                    logo.save(logo_path)
 
             pdf_buffer = generate_pdf(invoice_data, logo_path)
             return send_file(

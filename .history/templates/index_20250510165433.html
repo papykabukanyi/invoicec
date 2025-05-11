@@ -335,7 +335,7 @@
       </div>
       <div id="matchResults" class="match-results"></div>
       <div class="button-group">
-        <button type="button" class="rs-btn rs-btn-primary" onclick="sendPaidInvoice()" id="confirmPaidBtn" disabled>
+        <button type="button" class="rs-btn rs-btn-primary" onclick="sendPaidInvoice()" id="sendPaidBtn" disabled>
           Send Paid Invoice
         </button>
         <button type="button" class="rs-btn rs-btn-default" onclick="closeLookupPopup()">Cancel</button>
@@ -496,8 +496,8 @@
             el.classList.remove('selected'));
         document.querySelectorAll('.invoice-match')[index].classList.add('selected');
         
-        // Enable the send button - FIXED: using confirmPaidBtn ID instead of sendPaidBtn
-        document.getElementById('confirmPaidBtn').disabled = false;
+        // Enable the send button
+        document.getElementById('sendPaidBtn').disabled = false;
       }
 
       function sendPaidInvoice() {
@@ -547,8 +547,7 @@
         document.getElementById("lookupNumber").value = "";
         document.getElementById("matchResults").innerHTML = "";
         selectedInvoice = null;
-        // FIXED: using confirmPaidBtn ID instead of sendPaidBtn
-        document.getElementById("confirmPaidBtn").disabled = true;
+        document.getElementById("sendPaidBtn").disabled = true;
       }
     </script>
   </body>
