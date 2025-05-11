@@ -1,0 +1,553 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Invoice Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/rsuite@5/dist/rsuite.min.css"
+    />
+    <style>
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+
+      .rs-input {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+      }
+
+      .item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      .rs-btn {
+        min-width: 120px;
+      }
+
+      /* Overlay loader */
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      .loader {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+      }
+
+      /* Popup styles */
+      .popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        display: none;
+        max-width: 90%;
+        width: 400px;
+      }
+
+      .popup button {
+        width: 100%;
+        margin-top: 15px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Media Queries */
+      @media (max-width: 768px) {
+        .container {
+          padding: 15px;
+        }
+
+        .button-group {
+          flex-direction: column;
+        }
+
+        .rs-btn {
+          width: 100%;
+        }
+
+        .item {
+          padding: 10px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        h1 {
+          font-size: 24px;
+        }
+
+        .form-group {
+          margin-bottom: 10px;
+        }
+      }
+
+      .invoice-input {
+        display: flex;
+        align-items: center;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0 8px;
+      }
+
+      .invoice-input span {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .invoice-input input {
+        border: none;
+        outline: none;
+        padding: 8px;
+        flex: 1;
+      }
+
+      #lookupResult {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 4px;
+      }
+
+      #lookupResult.found {
+        background-color: #e8f5e9;
+        border: 1px solid #81c784;
+      }
+
+      #lookupResult.not-found {
+        background-color: #ffebee;
+        border: 1px solid #e57373;
+      }
+
+      .match-results {
+        max-height: 200px;
+        overflow-y: auto;
+        margin: 10px 0;
+      }
+
+      .invoice-match {
+        padding: 12px;
+        margin: 8px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .invoice-match:hover {
+        background-color: #f5f5f5;
+        border-color: #2196f3;
+      }
+
+      .invoice-match.selected {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+      }
+
+      .no-matches {
+        padding: 10px;
+        color: #666;
+        text-align: center;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Invoice Generator</h1>
+      <form method="post" enctype="multipart/form-data" id="invoiceForm">
+        <div class="form-group">
+          <label>Company Name:</label>
+          <input type="text" name="company_name" class="rs-input" required />
+        </div>
+        <div class="form-group">
+          <label>Company Logo:</label>
+          <input type="file" name="logo" class="rs-input" />
+        </div>
+
+        <div class="form-group">
+          <label>Buyer Name:</label>
+          <input type="text" name="buyer_name" class="rs-input" required />
+        </div>
+        <div class="form-group">
+          <label>Buyer Company:</label>
+          <input type="text" name="buyer_company" class="rs-input" required />
+        </div>
+        <div class="form-group">
+          <label>Buyer Phone:</label>
+          <input type="text" name="buyer_phone" class="rs-input" required />
+        </div>
+        <div class="form-group">
+          <label>Buyer Email:</label>
+          <input type="email" name="buyer_email" class="rs-input" required />
+        </div>
+
+        <h2>Items</h2>
+        <div id="items-container">
+          <div class="item">
+            <div class="form-group">
+              <label>Quantity:</label>
+              <input
+                type="number"
+                name="quantity[0]"
+                class="rs-input"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Description:</label>
+              <input
+                type="text"
+                name="description[0]"
+                class="rs-input"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Amount:</label>
+              <input
+                type="number"
+                name="amount[0]"
+                step="0.01"
+                class="rs-input"
+                required
+              />
+            </div>
+          </div>
+        </div>
+        <button type="button" id="add-item" class="rs-btn rs-btn-primary">
+          Add Item
+        </button>
+
+        <div class="form-group">
+          <label>Recipients (comma-separated):</label>
+          <input type="email" name="recipients" class="rs-input" required />
+        </div>
+
+        <div class="button-group">
+          <button type="submit" name="download" class="rs-btn rs-btn-primary">
+            Download Invoice
+          </button>
+          <button
+            type="button"
+            id="sendEmailBtn"
+            class="rs-btn rs-btn-primary"
+          >
+            Send Email
+          </button>
+          <button
+            type="button"
+            id="sendPaidBtn"
+            class="rs-btn rs-btn-primary"
+            style="background-color: green; color: white;"
+          >
+            Send Paid
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Overlay with loader -->
+    <div id="loading" class="overlay">
+      <div class="loader"></div>
+    </div>
+
+    <!-- Popup message -->
+    <div id="popupMessage" class="popup">
+      <p id="popupText"></p>
+      <button
+        type="button"
+        class="rs-btn rs-btn-primary"
+        onclick="closePopup()"
+      >
+        Close
+      </button>
+    </div>
+
+    <!-- Lookup Popup -->
+    <div id="lookupPopup" class="popup">
+      <h3>Look up Invoice</h3>
+      <div class="form-group">
+        <label>Invoice Number:</label>
+        <div class="invoice-input">
+          <span>K</span>
+          <input 
+            type="text" 
+            id="lookupNumber" 
+            maxlength="10" 
+            class="rs-input" 
+            placeholder="Enter number"
+            pattern="\d*"
+          >
+        </div>
+      </div>
+      <div id="matchResults" class="match-results"></div>
+      <div class="button-group">
+        <button type="button" class="rs-btn rs-btn-primary" onclick="sendPaidInvoice()" id="confirmPaidBtn" disabled>
+          Send Paid Invoice
+        </button>
+        <button type="button" class="rs-btn rs-btn-default" onclick="closeLookupPopup()">Cancel</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/rsuite@5/dist/rsuite.min.js"></script>
+    <script>
+      let itemCount = 1;
+      let selectedInvoice = null;
+
+      document.getElementById("add-item").addEventListener("click", function () {
+        const itemsContainer = document.getElementById("items-container");
+        const newItemDiv = document.createElement("div");
+        newItemDiv.classList.add("item");
+        newItemDiv.innerHTML = `
+                <div class="form-group">
+                    <label>Quantity:</label>
+                    <input type="number" name="quantity[${itemCount}]" class="rs-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <input type="text" name="description[${itemCount}]" class="rs-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount:</label>
+                    <input type="number" name="amount[${itemCount}]" step="0.01" class="rs-input" required>
+                </div>
+            `;
+        itemsContainer.appendChild(newItemDiv);
+        itemCount++;
+      });
+
+      document.getElementById("sendEmailBtn").addEventListener("click", function () {
+        sendInvoice('send_email');
+      });
+
+      document.getElementById("sendPaidBtn").addEventListener("click", function () {
+        document.getElementById("lookupPopup").style.display = "block";
+      });
+
+      document.getElementById("lookupNumber").addEventListener("input", function(e) {
+        const number = e.target.value;
+        // Allow only numbers
+        if (!/^\d*$/.test(number)) {
+            e.target.value = number.replace(/\D/g, '');
+            return;
+        }
+        searchInvoices(number);
+      });      function sendInvoice(action, formData = null) {
+        const form = document.getElementById("invoiceForm");
+        const loading = document.getElementById("loading");
+        const popupMessage = document.getElementById("popupMessage");
+        const popupText = document.getElementById("popupText");
+
+        loading.style.display = "flex"; // Changed to flex for center alignment
+
+        if (!formData) {
+          formData = new FormData(form);
+          formData.append(action, "true");
+        }
+
+        fetch("/invoice", {
+          method: "POST",
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData,
+        })
+        .then(response => {
+          const contentType = response.headers.get("content-type");
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          if (contentType && contentType.includes("application/json")) {
+            return response.json();
+          }
+          throw new TypeError("Response was not JSON");
+        })
+        .then(data => {
+          loading.style.display = "none";
+          if (data.status === "success") {
+            popupText.innerText = "Email sent successfully!";
+          } else {
+            popupText.innerText = "Email sending failed: " + data.message;
+          }
+          popupMessage.style.display = "block";
+        })
+        .catch(error => {
+          loading.style.display = "none";
+          console.error("Error:", error);
+          popupText.innerText = "An error occurred: " + error.message;
+          popupMessage.style.display = "block";
+        });
+      }
+
+      function searchInvoices(number) {
+        const formData = new FormData();
+        formData.append("partial_number", number);
+
+        fetch("/search_invoices", {
+          method: "POST",
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "success") {
+            displayMatches(data.matches);
+          }
+        })
+        .catch(error => console.error('Search error:', error));
+      }
+
+      function displayMatches(matches) {
+        const matchResults = document.getElementById("matchResults");
+        matchResults.innerHTML = '';
+        
+        if (matches.length === 0) {
+          matchResults.innerHTML = '<div class="no-matches">No matching invoices found</div>';
+          return;
+        }
+        
+        // Store matches in data attributes instead of inline JSON
+        matches.forEach((invoice, index) => {
+          const invoiceEl = document.createElement('div');
+          invoiceEl.className = 'invoice-match';
+          invoiceEl.innerHTML = `
+              <strong>Invoice ${invoice.invoice_number}</strong><br>
+              ${invoice.company_name}<br>
+              <strong>$${invoice.total}</strong>
+          `;
+          
+          // Store invoice data safely as a data attribute
+          invoiceEl.dataset.invoiceIndex = index;
+          
+          // Add click event listener
+          invoiceEl.addEventListener('click', function() {
+            selectInvoice(index, matches);
+          });
+          
+          matchResults.appendChild(invoiceEl);
+        });
+        
+        // Store matches in a global variable for reference
+        window.currentMatches = matches;
+      }
+
+      function selectInvoice(index, matches) {
+        selectedInvoice = window.currentMatches[index];
+        
+        // Update UI to show selection
+        document.querySelectorAll('.invoice-match').forEach(el => 
+            el.classList.remove('selected'));
+        document.querySelectorAll('.invoice-match')[index].classList.add('selected');
+        
+        // Enable the send button - FIXED: using confirmPaidBtn ID instead of sendPaidBtn
+        document.getElementById('confirmPaidBtn').disabled = false;
+      }
+
+      function sendPaidInvoice() {
+        if (!selectedInvoice) {
+          alert("Please select an invoice first");
+          return;
+        }
+
+        const formData = new FormData();
+        
+        // Add all invoice fields to the form data
+        for (const [key, value] of Object.entries(selectedInvoice)) {
+          if (key === "items") {
+            // Handle the items array specially
+            selectedInvoice.items.forEach((item, i) => {
+              formData.append(`quantity[${i}]`, item.quantity);
+              formData.append(`description[${i}]`, item.description);
+              formData.append(`amount[${i}]`, item.amount);
+            });
+          } else {
+            formData.append(key, value);
+          }
+        }
+        
+        // Add the send_paid flag and recipient email
+        formData.append("send_paid", "true");
+        
+        // Get the recipient from the main form if available, otherwise from invoice data
+        const recipientField = document.querySelector('input[name="recipients"]');
+        const recipientValue = recipientField && recipientField.value ? 
+                              recipientField.value : 
+                              selectedInvoice.buyer_email;
+        
+        formData.append("recipients", recipientValue);
+
+        // Send the invoice
+        sendInvoice('send_paid', formData);
+        closeLookupPopup();
+      }
+
+      function closePopup() {
+        document.getElementById("popupMessage").style.display = "none";
+      }
+
+      function closeLookupPopup() {
+        document.getElementById("lookupPopup").style.display = "none";
+        document.getElementById("lookupNumber").value = "";
+        document.getElementById("matchResults").innerHTML = "";
+        selectedInvoice = null;
+        // FIXED: using confirmPaidBtn ID instead of sendPaidBtn
+        document.getElementById("confirmPaidBtn").disabled = true;
+      }
+    </script>
+  </body>
+</html>

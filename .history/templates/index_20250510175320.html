@@ -9,7 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">    <style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
       :root {
         --primary: #4169E1;
         --secondary: #00C9A7;
@@ -21,25 +22,6 @@
         --border-radius: 12px;
         --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
         --transition: all 0.3s ease;
-      }
-      
-      /* Modern scrollbar */
-      ::-webkit-scrollbar {
-        width: 10px;
-      }
-      
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-      }
-      
-      ::-webkit-scrollbar-thumb {
-        background: linear-gradient(var(--primary), var(--secondary));
-        border-radius: 10px;
-      }
-      
-      ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(var(--secondary), var(--primary));
       }
       
       body {
@@ -556,7 +538,7 @@
           <div class="section-title">
             <i class="fas fa-list-ul"></i>
             Invoice Items
-          </div>      <div id="items-container">
+          </div>          <div id="items-container">
             <div class="item">
               <div class="item-header">
                 <div class="item-title">Item #1</div>
@@ -567,7 +549,7 @@
               <div class="form-grid">
                 <div class="form-group">
                   <label>Quantity:</label>
-                  <div class="input-with-icon" style="position: relative;">
+                  <div class="input-with-icon">
                     <i class="fas fa-sort-numeric-up-alt" style="color: #aaa; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"></i>
                     <input
                       type="number"
@@ -582,7 +564,7 @@
                 </div>
                 <div class="form-group">
                   <label>Description:</label>
-                  <div class="input-with-icon" style="position: relative;">
+                  <div class="input-with-icon">
                     <i class="fas fa-align-left" style="color: #aaa; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"></i>
                     <input
                       type="text"
@@ -596,7 +578,7 @@
                 </div>
                 <div class="form-group">
                   <label>Amount ($):</label>
-                  <div class="input-with-icon" style="position: relative;">
+                  <div class="input-with-icon">
                     <i class="fas fa-dollar-sign" style="color: #aaa; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"></i>
                     <input
                       type="number"
@@ -710,66 +692,24 @@
     <script src="https://cdn.jsdelivr.net/npm/rsuite@5/dist/rsuite.min.js"></script>
     <script>
       let itemCount = 1;
-      let selectedInvoice = null;      document.getElementById("add-item").addEventListener("click", function () {
+      let selectedInvoice = null;
+
+      document.getElementById("add-item").addEventListener("click", function () {
         const itemsContainer = document.getElementById("items-container");
         const newItemDiv = document.createElement("div");
         newItemDiv.classList.add("item");
-        itemCount++;
         newItemDiv.innerHTML = `
-                <div class="item-header">
-                  <div class="item-title">Item #${itemCount}</div>
-                  <div class="item-actions">
-                    <button type="button" class="remove-item" onclick="removeItem(this)">
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="form-grid">
-                  <div class="form-group">
+                <div class="form-group">
                     <label>Quantity:</label>
-                    <div class="input-with-icon" style="position: relative;">
-                      <i class="fas fa-sort-numeric-up-alt" style="color: #aaa; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"></i>
-                      <input
-                        type="number"
-                        name="quantity[${itemCount-1}]"
-                        class="rs-input"
-                        placeholder="1"
-                        min="1"
-                        style="padding-left: 35px;"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div class="form-group">
+                    <input type="number" name="quantity[${itemCount}]" class="rs-input" required>
+                </div>
+                <div class="form-group">
                     <label>Description:</label>
-                    <div class="input-with-icon" style="position: relative;">
-                      <i class="fas fa-align-left" style="color: #aaa; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"></i>
-                      <input
-                        type="text"
-                        name="description[${itemCount-1}]"
-                        class="rs-input"
-                        placeholder="Service or product description"
-                        style="padding-left: 35px;"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>Amount ($):</label>
-                    <div class="input-with-icon" style="position: relative;">
-                      <i class="fas fa-dollar-sign" style="color: #aaa; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"></i>
-                      <input
-                        type="number"
-                        name="amount[${itemCount-1}]"
-                        step="0.01"
-                        class="rs-input"
-                        placeholder="0.00"
-                        min="0.01"
-                        style="padding-left: 35px;"
-                        required
-                      />
-                    </div>
-                  </div>
+                    <input type="text" name="description[${itemCount}]" class="rs-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount:</label>
+                    <input type="number" name="amount[${itemCount}]" step="0.01" class="rs-input" required>
                 </div>
             `;
         itemsContainer.appendChild(newItemDiv);
@@ -945,7 +885,9 @@
 
       function closePopup() {
         document.getElementById("popupMessage").style.display = "none";
-      }      function closeLookupPopup() {
+      }
+
+      function closeLookupPopup() {
         document.getElementById("lookupPopup").style.display = "none";
         document.getElementById("lookupNumber").value = "";
         document.getElementById("matchResults").innerHTML = "";
@@ -953,39 +895,6 @@
         // FIXED: using confirmPaidBtn ID instead of sendPaidBtn
         document.getElementById("confirmPaidBtn").disabled = true;
       }
-      
-      function removeItem(button) {
-        // Find and remove the parent item
-        const item = button.closest('.item');
-        if (item) {
-          // Add a smooth fade out animation
-          item.style.transition = 'all 0.3s ease';
-          item.style.opacity = '0';
-          item.style.transform = 'translateY(-10px)';
-          
-          setTimeout(() => {
-            item.remove();
-            // Recalculate total if needed
-          }, 300);
-        }
-      }
-      
-      // Animation for form elements
-      document.addEventListener('DOMContentLoaded', function() {
-        const formElements = document.querySelectorAll('.form-group, .section-title, .button-group, .item');
-        
-        formElements.forEach((element, index) => {
-          element.style.opacity = '0';
-          element.style.transform = 'translateY(20px)';
-          element.style.transition = 'all 0.5s ease';
-          
-          // Stagger the animations
-          setTimeout(() => {
-            element.style.opacity = '1';
-            element.style.transform = 'translateY(0)';
-          }, 100 + index * 50);
-        });
-      });
     </script>
   </body>
 </html>

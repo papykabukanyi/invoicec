@@ -85,8 +85,7 @@
         margin: 0;
         font-weight: 300;
         font-size: 1.1rem;
-      }
-        .form-container {
+      }      .form-container {
         background-color: white;
         border-radius: var(--border-radius);
         box-shadow: var(--box-shadow);
@@ -96,6 +95,35 @@
           radial-gradient(circle at 100% 100%, rgba(65, 105, 225, 0.03) 0%, transparent 40%),
           radial-gradient(circle at 0% 0%, rgba(0, 201, 167, 0.03) 0%, transparent 30%);
         border: 1px solid rgba(0,0,0,0.05);
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .form-container::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+          45deg,
+          transparent 0%,
+          rgba(65, 105, 225, 0.03) 50%,
+          transparent 100%
+        );
+        z-index: 0;
+        animation: shiny 8s linear infinite;
+        pointer-events: none;
+      }
+      
+      @keyframes shiny {
+        0% {
+          transform: translate(-30%, -30%) rotate(0deg);
+        }
+        100% {
+          transform: translate(-30%, -30%) rotate(360deg);
+        }
       }
         .section-title {
         font-size: 1.5rem;
