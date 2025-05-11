@@ -1,6 +1,11 @@
 # app.py
 import os
 import random
+import smtplib
+import redis
+import json
+import os
+import random
 import json
 import smtplib
 import redis
