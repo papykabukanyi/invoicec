@@ -375,10 +375,6 @@ def search_invoices():
         return jsonify({"status": "error", "message": str(e)})
 
 
-@app.route("/favicon.ico")
-def favicon():
-    return "", 204
-
 @app.route("/", methods=["GET"])
 def welcome():
     return render_template("welcome.html")

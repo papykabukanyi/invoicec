@@ -375,10 +375,6 @@ def search_invoices():
         return jsonify({"status": "error", "message": str(e)})
 
 
-@app.route("/favicon.ico")
-def favicon():
-    return "", 204
-
 @app.route("/", methods=["GET"])
 def welcome():
     return render_template("welcome.html")
@@ -513,15 +509,14 @@ def index():
                     except Exception as e:
                         print(f"Error saving logo: {e}")
                         # Continue without the logo if there's an error
-            
+
             pdf_buffer = generate_pdf(invoice_data, logo_path)
             return send_file(
                 pdf_buffer,
                 mimetype='application/pdf',
                 as_attachment=True,
                 download_name=f"invoice_{invoice_number}.pdf"
-            )
-        except Exception as e:
+            )        except Exception as e:
             traceback.print_exc()
             return jsonify({"status": "error", "message": f"General error: {str(e)}"}), 500
 

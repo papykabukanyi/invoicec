@@ -375,10 +375,6 @@ def search_invoices():
         return jsonify({"status": "error", "message": str(e)})
 
 
-@app.route("/favicon.ico")
-def favicon():
-    return "", 204
-
 @app.route("/", methods=["GET"])
 def welcome():
     return render_template("welcome.html")
@@ -505,8 +501,7 @@ def index():
                 logo = request.files["logo"]
                 if logo.filename != "":
                     try:
-                        # Ensure uploads directory exists
-                        os.makedirs("uploads", exist_ok=True)
+                        # Ensure uploads directory exists                        os.makedirs("uploads", exist_ok=True)
                         logo_path = os.path.join("uploads", logo.filename)
                         logo.save(logo_path)
                         print(f"Logo saved to {logo_path}")

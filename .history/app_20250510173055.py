@@ -375,10 +375,6 @@ def search_invoices():
         return jsonify({"status": "error", "message": str(e)})
 
 
-@app.route("/favicon.ico")
-def favicon():
-    return "", 204
-
 @app.route("/", methods=["GET"])
 def welcome():
     return render_template("welcome.html")
@@ -508,8 +504,7 @@ def index():
                         # Ensure uploads directory exists
                         os.makedirs("uploads", exist_ok=True)
                         logo_path = os.path.join("uploads", logo.filename)
-                        logo.save(logo_path)
-                        print(f"Logo saved to {logo_path}")
+                        logo.save(logo_path)                        print(f"Logo saved to {logo_path}")
                     except Exception as e:
                         print(f"Error saving logo: {e}")
                         # Continue without the logo if there's an error

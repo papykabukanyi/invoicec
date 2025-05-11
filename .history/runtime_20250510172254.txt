@@ -1,0 +1,2 @@
+# This file will be used by Railway to set up Python environment correctly
+python-3.11.4

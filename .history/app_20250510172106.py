@@ -4,12 +4,6 @@ import random
 import smtplib
 import redis
 import json
-import os
-import random
-import json
-import smtplib
-import redis
-import traceback
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -375,10 +369,6 @@ def search_invoices():
         return jsonify({"status": "error", "message": str(e)})
 
 
-@app.route("/favicon.ico")
-def favicon():
-    return "", 204
-
 @app.route("/", methods=["GET"])
 def welcome():
     return render_template("welcome.html")
@@ -513,7 +503,7 @@ def index():
                     except Exception as e:
                         print(f"Error saving logo: {e}")
                         # Continue without the logo if there's an error
-            
+
             pdf_buffer = generate_pdf(invoice_data, logo_path)
             return send_file(
                 pdf_buffer,
